@@ -3,59 +3,36 @@
  */
 
 
-    // initialize vars on load
+// initialize vars on load
 $(function() {
-    $("#status").html('Not connected');
-    $("#close").prop('disabled', true);
-    $("#send").prop('disabled', true);
-    $("#url").val("ws://localhost:8080");
+    var websocket_url = "ws://" + window.location.hostname + ":8080";
     // declare ws up here so we can swap it out
     var ws;
-
     // clicking 'open' creates a new socket at the url entered
-    $("#open").on('click', function (event) {
-        ws = new WebSocket($("#url").val());
+    ws = new WebSocket(websocket_url);
 
-        // swap buttons around when socket is open
-        ws.onopen = function open() {
-            conn_status = "Connected";
-            $("#status").html('Connected');
-            $("#close").prop('disabled', false);
-            $("#send").prop('disabled', false);
-            $("#open").prop('disabled', true);
-        };
+    // swap buttons around when socket is open
+    ws.onopen = function open() {
+        conn_status = "Connected";
+    };
 
-        ws.onclose = function close() {
-            conn_status = "Not Connected";
-            $("#status").html('Not connected');
-            $("#close").prop('disabled', true);
-            $("#send").prop('disabled', true);
-            $("#open").prop('disabled', false);
-        };
+    ws.onmessage = function (event) {
+        try{
+            var message_object = JSON.parse(event.data);
+            circles[message_object['circle']].xv = message_object['xv'];
+            circles[message_object['circle']].yv = message_object['yv'];
+        }
+        catch(exception){
 
-        ws.onmessage = function (event) {
-            try{
-                var message_object = JSON.parse(event.data);
-                circles[message_object['circle']].xv = message_object['xv'];
-                circles[message_object['circle']].yv = message_object['yv'];
-            }
-            catch(exception){
+        }
+        message = event.data ;
+    };
 
-            }
-            message += event.data + "     ";
-        };
-
-        $("#close").on('click', function (event) {
-            ws.close();
-        });
-
-        $("#send").on('click', function (event) {
-            var test_object = new Object();
-            test_object['message'] = $("#text").val();
-            var send_object = JSON.stringify(test_object);
-            ws.send(send_object);
-        });
-
+    $("#send").on('click', function (event) {
+        var test_object = new Object();
+        test_object['message'] = $("#text").val();
+        var send_object = JSON.stringify(test_object);
+        ws.send(send_object);
     });
 
     // circle handling
@@ -77,10 +54,8 @@ $(function() {
     var xMin = 0, xMax = context.canvas.width, yMin = 0, yMax = context.canvas.height;
     var mPressed = false, mReleased = true, circleMarked = false;
     var markedCircle;
-    var releaseSpeedMultiplier = 4, shotMaxSpd=xMax*0.1, shotMinSpd = 1, dragVal = 0.01, gravityVal = 0, floorDistBuffer = 0,
-        velBuffer = 1, wallCoR = 0.8, floorGravityBuffer = 1, grabCircMassMult = 1000;
-    var cursorOffset = -15;
-    var mouseVelPoints = 10; //number of cursor points to use in determining circle velocity when released
+    var shotMaxSpd=xMax*0.1, shotMinSpd = 1, dragVal = 0.01, gravityVal = 0, floorDistBuffer = 0,
+        wallCoR = 0.8, floorGravityBuffer = 1, grabCircMassMult = 1000;
     var gravity = true, drag = true, ceiling = true;
     init();
 
@@ -139,12 +114,6 @@ $(function() {
         return [(red + r)/2, (blue + b)/2, (green + g)/2];
     }
 
-    function populateCircles() {
-        for (var i = 0; i < circleCount; i++) {
-            circles[i] = new Circle();
-        }
-    }
-
     function mousePressed(e){
         mPressed = true;
         mReleased = false;
@@ -172,7 +141,6 @@ $(function() {
             catch(exception){
 
             }
-            circles[markedCircle].m = 4/3 * Math.PI * Math.pow( circles[markedCircle].r, 3);
             circles[markedCircle].marked = false;
             circleMarked = false;
             markedCircle = -1;
@@ -182,8 +150,8 @@ $(function() {
     function setMarkedVelocity(){
         var mouseX = mousePoints[mousePoints.length-1].x;
         var mouseY = mousePoints[mousePoints.length-1].y;
-        var originX = mousePoints[0].x;
-        var originY = mousePoints[0].y;
+        var originX = circles[markedCircle].x;
+        var originY = circles[markedCircle].y;
 
         if( Math.abs(mouseX-originX) > 0 || Math.abs(mouseY-originY)>0) {
             var dist = distPoints(mouseX, mouseY, originX, originY);
@@ -192,16 +160,6 @@ $(function() {
             circles[markedCircle].xv = xDiffUnit * (shotMaxSpd - shotMinSpd) * dist / Math.sqrt(Math.pow(xMax, 2) + Math.pow(yMax, 2));
             circles[markedCircle].yv = yDiffUnit * (shotMaxSpd - shotMinSpd) * dist / Math.sqrt(Math.pow(xMax, 2) + Math.pow(yMax, 2));
         }
-    }
-
-    function calcAvgProp(arr, lastDigits, prop){
-        var sum = 0;
-        var propVal;
-        for (var i=arr.length-2; i>Math.max(0, arr.length-(lastDigits-1)); i--){
-            propVal = arr[i+1][prop];
-            sum += arr[i+1][prop] - arr[i][prop];
-        }
-        return sum/lastDigits;
     }
 
     function mouseMoved(e){
@@ -217,19 +175,12 @@ $(function() {
         mousePoints.push(new Point(x, y));
     }
 
-    function logFramePoints(){
-        if (mPressed){
-            logPoint(mousePoints[mousePoints.length-1].x, mousePoints[mousePoints.length-1].y);
-        }
-    }
-
     function markCircle() {
         if (mPressed && !circleMarked) {
             for (var i=0; i<circles.length; i++){
                 var dist = distPoints(circles[i].x, circles[i].y, mousePoints[mousePoints.length-1].x, mousePoints[mousePoints.length-1].y);
                 if (dist < circles[i].r){
                     circles[i].marked = true;
-                    circles[i].m = grabCircMassMult * 4/3 * Math.PI * Math.pow( circles[i].r, 3);
                     circleMarked = true;
                     markedCircle = i;
                 }
@@ -245,27 +196,13 @@ $(function() {
         }
     }
 
-    function dragAndGravity(){
+    function applyDrag(){
         for(var i=0; i<circles.length; i++){
             if (drag){
                 circles[i].xv *= (1-dragVal);
                 circles[i].yv *= (1-dragVal);
             }
-
-            if (gravity & yMax - (circles[i].y + circles[i].r) > floorDistBuffer){
-                var circleDistFromFloor = yMax - (circles[i].y + circles[i].r);
-                var stepFromFloor = Math.abs( circleDistFromFloor);
-                circles[i].yv += ( gravityVal * Math.min( 1, Math.abs(circleDistFromFloor)/floorGravityBuffer ) );
-            }
         }
-    }
-
-    function gravityToggle(){
-        gravity = !gravity;
-    }
-
-    function dragToggle(){
-        drag = !drag;
     }
 
     function drawmessage(){
@@ -280,35 +217,28 @@ $(function() {
     function drawCircleID(){
         for (var i=0; i<circles.length; i++){
             context.fillStyle = "white";
-            context.fillText(i.toString(), circles[i].x, circles[i].y);
+            context.fillText(i.toString() + ' x:' + Math.round(circles[i].x) + ' y:' + Math.round(circles[i].y), circles[i].x, circles[i].y);
             //context.fillText(circles[i].yv, circles[i].x, circles[i].y);
             //context.fillText(circles[i].xv, circles[i].x, circles[i].y + 10);
         }
     }
 
     function mouseInteract(){
-        logFramePoints();
         markCircle();
         handleMarkedCircle();
     }
 
-    function sizeCanvas(){
+    function clearCanvas(){
         context.clearRect(xMin, yMin, xMax, yMax);
-        /*
-         context.canvas.width  = window.innerWidth - canvas1.offsetLeft;
-         context.canvas.height = window.innerHeight-canvas1.offsetTop;
-         xMax = window.innerWidth - canvas1.offsetLeft;
-         yMax = window.innerHeight-canvas1.offsetTop;
-         */
     }
 
     function updateCircles(){
-        sizeCanvas();
+        clearCanvas();
         drawCircles(circles, context);
         drawConnStatus();
         drawmessage();
         drawCircleID();
-        dragAndGravity();
+        applyDrag();
         incPos(circles);
         wallCollision(circles, xMin, xMax, yMin, yMax, wallCoR, ceiling);
         collisions(circles, collisPairs);
