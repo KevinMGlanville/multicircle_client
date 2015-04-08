@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Multicircle</title>
+    <script src="js/jquery-1.11.2.js"></script>
+</head>
+
+<body>
+Connection: <span id="status"></span><br>
+<input id="open" type="button" value="Open" />
+<input id="close" type="button" value="Close" />
+<input id="url" placeholder="URL" /><br>
+<input id="send" type="button" value="Test message" />
+<input id="text" /><br />
+<div id="message"></div>
+<canvas id="canvas1">
+    This text is displayed if your browser does not support HTML5 Canvas.
+</canvas>
+
+<style type="text/css">
+    body, html {
+        background-color:rgb(32,32,32);
+    }
+</style>
+
+<script src="js/multi-circles.js"></script>
+<script id="circleMath" src="js/circleMath.js" id="circleMath"></script>
+
+
+</body>
+</html>
