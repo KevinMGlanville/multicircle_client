@@ -13,7 +13,7 @@
 	}
 	
 	function incPos(circles) {
-		for (i = 0; i < circles.length; i++) {
+		for (var i = 0; i < circles.length; i++) {
 			circles[i].x += circles[i].xv;
 			circles[i].y += circles[i].yv;
 		}
@@ -27,7 +27,7 @@
 	}
 	
 	function drawCircles(circles, context) {
-		for (i = 0; i < circles.length; i++) {
+		for (var i = 0; i < circles.length; i++) {
 			context.fillStyle = circles[i].color;
 			context.beginPath();
 			context.arc(circles[i].x, circles[i].y, circles[i].r, 0, 2*Math.PI);
@@ -36,9 +36,9 @@
 		}
 	}
 	
-	function collisions(circles, collisPairs){
+	function collisions(circles, collisPairs, collision){
 		clearArr(collisPairs);
-		populateCollis(circles, collisPairs);
+		populateCollis(circles, collisPairs, collision);
 		if(collisPairs.length>0){
 			sortCollisions(collisPairs);
 			handleCollisZero(collisPairs);
@@ -46,7 +46,7 @@
 		
 		while(collisPairs.length > 0){
 			clearArr(collisPairs);
-			populateCollis(circles, collisPairs);
+			populateCollis(circles, collisPairs, collision);
 			if(collisPairs.length>0){
 				sortCollisions(collisPairs);
 				handleCollisZero(collisPairs);
@@ -67,7 +67,7 @@
 	}
 	
 	function handleCollis(collisPairs) {
-		for (i = 0; i < collisPairs.length; i++) {
+		for (var i = 0; i < collisPairs.length; i++) {
 			setCollisPos( collisPairs[i].c1, collisPairs[i].c2, collisPairs[i].t );
 			setCollisVel(collisPairs[i].c1, collisPairs[i].c2);
 		}
@@ -81,7 +81,7 @@
 
 	function wallCollision(circles, xL, xH, yL, yH, wallCoR, ceiling) {
 		
-		for (i = 0; i < circles.length; i++) {
+		for (var i = 0; i < circles.length; i++) {
 			if (circles[i].x + circles[i].r >= xH){
 				circles[i].xv = -Math.abs( circles[i].xv ) * wallCoR;
 				circles[i].x = xH - circles[i].r;
@@ -102,16 +102,14 @@
 		}
 	}
 	
-	function populateCollis(circles, collisPairs) {
-		for (i = 0; i < circles.length; i++) {
-			for (j = i + 1; j < circles.length; j++){
+	function populateCollis(circles, collisPairs, collision) {
+		for (var i = 0; i < circles.length; i++) {
+			for (var j = i + 1; j < circles.length; j++){
 				var dist = distPoints(circles[i].x, circles[i].y, circles[j].x, circles[j].y);
 				var sumR = circles[i].r + circles[j].r;
 				if ( dist < sumR) {
 					collisPairs.push( new CollisPair( circles[i], circles[j], calcTimeStepCollis(circles[i], circles[j] ) ) );
-					//swapColors(circles[i],circles[j]);
-					circles[i].counter++;
-					circles[j].counter++;
+                    collision(collisPairs[collisPairs.length-1]);
 				}
 			}
 		}
@@ -121,12 +119,6 @@
 		this.c1 = c1;
 		this.c2 = c2;
 		this.t = t;
-        //Change color to gray when ever a collision occurs.  This
-        //logic will change when we know what colors turn it is.
-        //Then we just turn both balls to the player who's turn
-        //it is color
-        c1.color = "rgb(" + 100 +","+ 100 +"," + 100 +")";
-        c2.color = "rgb(" + 100 +","+ 100 +"," + 100 +")";
 	}
 	
 	function calcTimeStepCollis(c1, c2) {

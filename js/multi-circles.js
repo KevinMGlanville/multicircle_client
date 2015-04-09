@@ -154,7 +154,7 @@ $(function() {
             try{
 
                 circle_message['circle'] = markedCircle;
-                circle_message['xv'] = [markedCircle].xv;
+                circle_message['xv'] = circles[markedCircle].xv;
                 circle_message['yv'] = circles[markedCircle].yv;
                 ws.send(JSON.stringify(circle_message));
             }
@@ -240,7 +240,7 @@ $(function() {
         greenScore = 0;
         for(var z = 0; z < circles.length; z++){
             var ballColor = circles[z].color;
-            console.log(ballColor);
+            //console.log(ballColor);
 
             if (ballColor == "rgb(127,0,0)"){
                 redScore++;
@@ -271,6 +271,15 @@ $(function() {
         context.clearRect(xMin, yMin, xMax, yMax);
     }
 
+    function collisCallback(collisPair){
+        //Change color to gray when ever a collision occurs.  This
+        //logic will change when we know what colors turn it is.
+        //Then we just turn both balls to the player who's turn
+        //it is color
+        collisPair.c1.color = "rgb(" + 100 +","+ 100 +"," + 100 +")";
+        collisPair.c2.color = "rgb(" + 100 +","+ 100 +"," + 100 +")";
+    }
+
     function updateCircles(){
         clearCanvas();
         drawCircles(circles, context);
@@ -281,7 +290,7 @@ $(function() {
         applyDrag();
         incPos(circles);
         wallCollision(circles, xMin, xMax, yMin, yMax, wallCoR, ceiling);
-        collisions(circles, collisPairs);
+        collisions(circles, collisPairs, collisCallback);
         mouseInteract();
     }
 });
