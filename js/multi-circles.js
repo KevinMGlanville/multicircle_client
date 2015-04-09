@@ -312,7 +312,7 @@ $(function() {
             message = "Turn is over!";
 
             //Send the position of all the balls
-            for (var j = 0; j < circles.length; i++)
+            for (var j = 0; j < circles.length; j++)
             {
                 //TODO: Waiting for object message structure
             }
