@@ -59,6 +59,25 @@ $(function() {
     var shotMaxSpd=xMax*0.1, shotMinSpd = 1, dragVal = 0.01, gravityVal = 0, floorDistBuffer = 0,
         wallCoR = 0.8, floorGravityBuffer = 1, grabCircMassMult = 1000;
     var gravity = true, drag = true, ceiling = true;
+
+    // Controls if it is currently this player's turn
+    var myTurn = true;
+
+    // Keeps track of if the active player made a move
+    var madeMove = false;
+
+    // The minimum speed a ball can move, used to change turns
+    var minimumVelocity = 0.05;
+
+    // What color balls belong to this player
+    // This is currently hard-coded to red
+    var myColor = "rgb(127,0,0)"
+
+    // The ball object that is currently marked
+    // Can be used to get the color of the selected ball
+    var selectedBall;
+
+
     init();
 
     function init() {
@@ -143,9 +162,15 @@ $(function() {
         clearArr(mousePoints);
     }
 
+    // Releases a circle and sends it flying.
+    // This method does nothing if the selected ball isn't
+    // yours or if it isn't your turn.
     function releaseCircle(){
-        if(markedCircle > -1){
+        if(markedCircle > -1 && myTurn && myColor === selectedBall.color && madeMove == false){
             setMarkedVelocity();
+            // Indicate the player made a move
+
+            madeMove = true;
             var circle_message = new Object();
             try{
 
@@ -161,6 +186,8 @@ $(function() {
             circleMarked = false;
             markedCircle = -1;
         }
+        // Unmark the ball if it didn't belong to the player trying to move it
+        circleMarked = false;
     }
 
     function setMarkedVelocity(){
@@ -199,6 +226,7 @@ $(function() {
                     circles[i].marked = true;
                     circleMarked = true;
                     markedCircle = i;
+                    selectedBall = circles[i];
                 }
             }
         }
@@ -252,9 +280,44 @@ $(function() {
     function drawCircleID(){
         for (var i=0; i<circles.length; i++){
             context.fillStyle = "white";
-            context.fillText(i.toString() + ' x:' + Math.round(circles[i].x) + ' y:' + Math.round(circles[i].y), circles[i].x, circles[i].y);
-            //context.fillText(circles[i].yv, circles[i].x, circles[i].y);
+            context.fillText(i.toString() + ' x:' + Math.round(circles[i].xv) + ' y:' + Math.round(circles[i].yv), circles[i].x, circles[i].y);
+             //context.fillText(circles[i].yv, circles[i].x, circles[i].y);
             //context.fillText(circles[i].xv, circles[i].x, circles[i].y + 10);
+        }
+    }
+
+    // Tests if balls are moving but are under a
+    // threshold velocity. If they are, changes the 
+    // turn and sends the position of each
+    // ball on the screen to the opponent
+    function changeTurns(){
+        // Tests if the player made a move and
+        // if the moved ball is under a certain velocity
+        if(madeMove && myTurn)
+        {
+            // Check if all balls velocity are under
+            // a given minimum velocity
+            for (var i = 0; i < circles.length; i++)
+            {
+                // If a ball isn't under the given minimum velcity, return
+                if(!(Math.abs(circles[i].xv) <= minimumVelocity) && !(Math.abs(circles[i].yv) <= minimumVelocity))
+                {
+                    return;
+                }
+            }
+
+            //All the balls passed the minimum test, pass the turn to the other player
+            myTurn = false;
+            madeMove = false;
+            message = "Turn is over!";
+
+            //Send the position of all the balls
+            for (var j = 0; j < circles.length; i++)
+            {
+                //TODO: Waiting for object message structure
+            }
+
+
         }
     }
 
@@ -279,5 +342,7 @@ $(function() {
         wallCollision(circles, xMin, xMax, yMin, yMax, wallCoR, ceiling);
         collisions(circles, collisPairs);
         mouseInteract();
+        // Check if it's time to change turns
+        changeTurns();
     }
 });
