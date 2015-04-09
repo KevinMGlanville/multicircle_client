@@ -16,6 +16,10 @@ $(function() {
         conn_status = "Connected";
     };
 
+    ws.onclose = function (event) {
+        conn_status = "Not connected";
+    };
+
     ws.onmessage = function (event) {
         try{
             var message_object = JSON.parse(event.data);
