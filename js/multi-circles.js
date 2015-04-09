@@ -174,6 +174,7 @@ $(function() {
             madeMove = true;
 
             var circle_message = new Object();
+            circle_message['message'] = 'move';
             circle_message['circle'] = markedCircle;
             circle_message['xv'] = circles[markedCircle].xv;
             circle_message['yv'] = circles[markedCircle].yv;
