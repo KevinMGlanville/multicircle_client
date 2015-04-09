@@ -21,13 +21,10 @@ $(function() {
     };
 
     ws.onmessage = function (event) {
-        try{
-            var message_object = JSON.parse(event.data);
+        var message_object = JSON.parse(event.data);
+        if(message_object['message'] == 'move'){
             circles[message_object['circle']].xv = message_object['xv'];
             circles[message_object['circle']].yv = message_object['yv'];
-        }
-        catch(exception){
-
         }
         message = event.data ;
     };
@@ -175,17 +172,13 @@ $(function() {
             // Indicate the player made a move
 
             madeMove = true;
+
             var circle_message = new Object();
-            try{
+            circle_message['circle'] = markedCircle;
+            circle_message['xv'] = circles[markedCircle].xv;
+            circle_message['yv'] = circles[markedCircle].yv;
+            ws.send(JSON.stringify(circle_message));
 
-                circle_message['circle'] = markedCircle;
-                circle_message['xv'] = circles[markedCircle].xv;
-                circle_message['yv'] = circles[markedCircle].yv;
-                ws.send(JSON.stringify(circle_message));
-            }
-            catch(exception){
-
-            }
             circles[markedCircle].marked = false;
             circleMarked = false;
             markedCircle = -1;
