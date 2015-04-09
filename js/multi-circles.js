@@ -46,6 +46,8 @@ $(function() {
 
     var conn_status =  "Not connected";
     var message = "";
+    var greenScore = 0;
+    var redScore = 0;
 
     var mousePoints = [], circles = [], collisPairs = [];
     // look into changing updates to request_anim_frame rather than framerate (more consistent physics across clients?)
@@ -99,19 +101,33 @@ $(function() {
         var r = 0;
         var randColor;
         for(var i=0; i<7; i++){
-            randColor = randomMixedColor(200, 200, 200);
+            randColor = randomMixedColor(255, 0, 0);
             r = xMax / (25 * ( i/3 +1 ) );
-            circles[i] = new CircleWP(xMin + r + offset, yMax/2, r, 0, 0, "rgb(" +
+            circles[i] = new CircleWP(xMin + r + offset, yMax/4, r, 0, 0, "rgb(" +
             Math.floor(randColor[0]) +","+ Math.floor(randColor[1]) +"," + Math.floor(randColor[2]) +")");
             offset += r * 2 + 15;
         }
+        offset = 0;
+        r = 0;
+        for(i=7; i < 14; i++){
+            randColor = randomMixedColor(0, 0, 255);
+            r = xMax / (25 * ( (i-7)/3 +1 ) );
+            circles[i] = new CircleWP(xMin + r + offset, yMax/1.5, r, 0, 0, "rgb(" +
+            Math.floor(randColor[0]) +","+ Math.floor(randColor[1]) +"," + Math.floor(randColor[2]) +")");
+            offset += r * 2 + 15;
+        }
+
+
+
     }
 
     function randomMixedColor(r, g, b){
         var red = Math.random()*255,
             blue = Math.random()*255,
             green = Math.random()*255;
-        return [(red + r)/2, (blue + b)/2, (green + g)/2];
+        //return [(red + r)/2, (blue + b)/2, (green + g)/2];
+        return [(r)/2, (b)/2, (g)/2];
+
     }
 
     function mousePressed(e){
@@ -134,7 +150,7 @@ $(function() {
             try{
 
                 circle_message['circle'] = markedCircle;
-                circle_message['xv'] = circles[markedCircle].xv;
+                circle_message['xv'] = [markedCircle].xv;
                 circle_message['yv'] = circles[markedCircle].yv;
                 ws.send(JSON.stringify(circle_message));
             }
@@ -214,6 +230,25 @@ $(function() {
         context.fillStyle = "white";
         context.fillText(conn_status, 10, 10);
     }
+
+    function drawPlayerScores(){
+        redScore = 0;
+        greenScore = 0;
+        for(var z = 0; z < circles.length; z++){
+            var ballColor = circles[z].color;
+            console.log(ballColor);
+
+            if (ballColor == "rgb(127,0,0)"){
+                redScore++;
+            }
+            else if(ballColor == "rgb(0,127,0)"){
+                greenScore++;
+            }
+        }
+        context.fillStyle = "white";
+        context.fillText("Red:" + redScore, 100, 10);
+        context.fillText("Green:" + greenScore, 150, 10);
+    }
     function drawCircleID(){
         for (var i=0; i<circles.length; i++){
             context.fillStyle = "white";
@@ -236,6 +271,7 @@ $(function() {
         clearCanvas();
         drawCircles(circles, context);
         drawConnStatus();
+        drawPlayerScores();
         drawmessage();
         drawCircleID();
         applyDrag();

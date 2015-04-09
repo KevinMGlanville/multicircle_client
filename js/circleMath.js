@@ -121,6 +121,12 @@
 		this.c1 = c1;
 		this.c2 = c2;
 		this.t = t;
+        //Change color to gray when ever a collision occurs.  This
+        //logic will change when we know what colors turn it is.
+        //Then we just turn both balls to the player who's turn
+        //it is color
+        c1.color = "rgb(" + 100 +","+ 100 +"," + 100 +")";
+        c2.color = "rgb(" + 100 +","+ 100 +"," + 100 +")";
 	}
 	
 	function calcTimeStepCollis(c1, c2) {
