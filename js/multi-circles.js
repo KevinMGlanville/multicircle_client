@@ -49,6 +49,7 @@ $(function() {
     var message = "";
     var greenScore = 0;
     var redScore = 0;
+    var turn = 0;
 
     var mousePoints = [], circles = [], collisPairs = [];
     // look into changing updates to request_anim_frame rather than framerate (more consistent physics across clients?)
@@ -68,11 +69,14 @@ $(function() {
     var madeMove = false;
 
     // The minimum speed a ball can move, used to change turns
-    var minimumVelocity = 0.05;
+    var minimumVelocity = 0.035;
 
     // What color balls belong to this player
     // This is currently hard-coded to red
     var myColor = "rgb(127,0,0)"
+    var oppColor = "rgb(0,127,0)"
+
+
 
     // The ball object that is currently marked
     // Can be used to get the color of the selected ball
@@ -123,8 +127,7 @@ $(function() {
         for(var i=0; i<7; i++){
             randColor = randomMixedColor(255, 0, 0);
             r = xMax / (25 * ( i/3 +1 ) );
-            circles[i] = new CircleWP(xMin + r + offset, yMax/4, r, 0, 0, "rgb(" +
-            Math.floor(randColor[0]) +","+ Math.floor(randColor[1]) +"," + Math.floor(randColor[2]) +")");
+            circles[i] = new CircleWP(xMin + r + offset, yMax/4, r, 0, 0, myColor);
             offset += r * 2 + 15;
         }
         offset = 0;
@@ -132,13 +135,9 @@ $(function() {
         for(i=7; i < 14; i++){
             randColor = randomMixedColor(0, 0, 255);
             r = xMax / (25 * ( (i-7)/3 +1 ) );
-            circles[i] = new CircleWP(xMin + r + offset, yMax/1.5, r, 0, 0, "rgb(" +
-            Math.floor(randColor[0]) +","+ Math.floor(randColor[1]) +"," + Math.floor(randColor[2]) +")");
+            circles[i] = new CircleWP(xMin + r + offset, yMax/1.5, r, 0, 0, oppColor);
             offset += r * 2 + 15;
         }
-
-
-
     }
 
     function randomMixedColor(r, g, b){
@@ -168,6 +167,24 @@ $(function() {
     // yours or if it isn't your turn.
     function releaseCircle(){
         if(markedCircle > -1 && myTurn && myColor === selectedBall.color && madeMove == false){
+            setMarkedVelocity();
+            // Indicate the player made a move
+
+            madeMove = true;
+
+            var circle_message = new Object();
+            circle_message['message'] = 'move';
+            circle_message['circle'] = markedCircle;
+            circle_message['xv'] = circles[markedCircle].xv;
+            circle_message['yv'] = circles[markedCircle].yv;
+            ws.send(JSON.stringify(circle_message));
+
+            circles[markedCircle].marked = false;
+            circleMarked = false;
+            markedCircle = -1;
+        }
+        //only for local game testing
+        else if(markedCircle > -1 && !myTurn && oppColor === selectedBall.color && madeMove == false){
             setMarkedVelocity();
             // Indicate the player made a move
 
@@ -264,10 +281,10 @@ $(function() {
             var ballColor = circles[z].color;
             //console.log(ballColor);
 
-            if (ballColor == "rgb(127,0,0)"){
+            if (ballColor == myColor){
                 redScore++;
             }
-            else if(ballColor == "rgb(0,127,0)"){
+            else if(ballColor == oppColor){
                 greenScore++;
             }
         }
@@ -304,6 +321,14 @@ $(function() {
                 }
             }
 
+            //Stop all balls completely
+            for (var z = 0; z < circles.length; z++){
+
+                circles[z].xv = 0;
+                circles[z].yv = 0;
+
+            }
+
             //All the balls passed the minimum test, pass the turn to the other player
             myTurn = false;
             madeMove = false;
@@ -315,6 +340,43 @@ $(function() {
                 //TODO: Waiting for object message structure
             }
 
+            turn++;
+
+        }
+        //only for local game
+        else if(madeMove && !myTurn)
+        {
+            // Check if all balls velocity are under
+            // a given minimum velocity
+            for (var i = 0; i < circles.length; i++)
+            {
+                // If a ball isn't under the given minimum velcity, return
+                if(!(Math.abs(circles[i].xv) <= minimumVelocity) && !(Math.abs(circles[i].yv) <= minimumVelocity))
+                {
+                    return;
+                }
+            }
+
+            //Stop all balls completely
+            for (var z = 0; z < circles.length; z++){
+
+                circles[z].xv = 0;
+                circles[z].yv = 0;
+
+            }
+
+            //All the balls passed the minimum test, pass the turn to the other player
+            myTurn = true;
+            madeMove = false;
+            message = "Turn is over!";
+
+            //Send the position of all the balls
+            for (var j = 0; j < circles.length; j++)
+            {
+                //TODO: Waiting for object message structure
+            }
+
+            turn++;
 
         }
     }
@@ -333,8 +395,14 @@ $(function() {
         //logic will change when we know what colors turn it is.
         //Then we just turn both balls to the player who's turn
         //it is color
-        collisPair.c1.color = "rgb(" + 100 +","+ 100 +"," + 100 +")";
-        collisPair.c2.color = "rgb(" + 100 +","+ 100 +"," + 100 +")";
+        if(turn % 2 == 0) {
+            collisPair.c1.color = myColor;
+            collisPair.c2.color = myColor;
+        }
+        else{
+            collisPair.c1.color = oppColor;
+            collisPair.c2.color = oppColor;
+        }
     }
 
     function updateCircles(){
