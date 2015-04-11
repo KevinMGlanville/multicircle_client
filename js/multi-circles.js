@@ -71,12 +71,8 @@ $(function() {
     // The minimum speed a ball can move, used to change turns
     var minimumVelocity = 0.035;
 
-    // What color balls belong to this player
-    // This is currently hard-coded to red
-    var myColor = "rgb(127,0,0)"
-    var oppColor = "rgb(0,127,0)"
-
-
+    var myColor = "rgb(255,105,97)"
+    var oppColor = "rgb(96,130,182)"
 
     // The ball object that is currently marked
     // Can be used to get the color of the selected ball
@@ -125,7 +121,7 @@ $(function() {
         var r = 0;
         var randColor;
         for(var i=0; i<7; i++){
-            randColor = randomMixedColor(255, 0, 0);
+            randColor = randomMixedColor(0, 0, 255);
             r = xMax / (25 * ( i/3 +1 ) );
             circles[i] = new CircleWP(xMin + r + offset, yMax/4, r, 0, 0, myColor);
             offset += r * 2 + 15;
@@ -265,12 +261,12 @@ $(function() {
     }
 
     function drawmessage(){
-        context.fillStyle = "white";
+        context.fillStyle = "black";
         context.fillText(message, 20, 20);
     }
 
     function drawConnStatus(){
-        context.fillStyle = "white";
+        context.fillStyle = "black";
         context.fillText(conn_status, 10, 10);
     }
 
@@ -288,13 +284,13 @@ $(function() {
                 greenScore++;
             }
         }
-        context.fillStyle = "white";
+        context.fillStyle = "black";
         context.fillText("Red:" + redScore, 100, 10);
         context.fillText("Green:" + greenScore, 150, 10);
     }
     function drawCircleID(){
         for (var i=0; i<circles.length; i++){
-            context.fillStyle = "white";
+            context.fillStyle = "black";
             context.fillText(i.toString() + ' x:' + Math.round(circles[i].xv) + ' y:' + Math.round(circles[i].yv), circles[i].x, circles[i].y);
              //context.fillText(circles[i].yv, circles[i].x, circles[i].y);
             //context.fillText(circles[i].xv, circles[i].x, circles[i].y + 10);
