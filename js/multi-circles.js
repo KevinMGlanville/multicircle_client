@@ -40,7 +40,7 @@ $(function() {
     var canvas1 = document.getElementById("canvas1");
     var context = canvas1.getContext("2d");
     context.canvas.width  = 800;
-    context.canvas.height = 400;
+    context.canvas.height = 500;
     document.addEventListener("mousedown", mousePressed);
     document.addEventListener("mouseup", mouseReleased);
     document.addEventListener("mousemove", mouseMoved);
@@ -58,7 +58,7 @@ $(function() {
     var xMin = 0, xMax = context.canvas.width, yMin = 0, yMax = context.canvas.height;
     var mPressed = false, mReleased = true, circleMarked = false;
     var markedCircle;
-    var shotMaxSpd=xMax*0.1, shotMinSpd = 1, dragVal = 0.01, gravityVal = 0, floorDistBuffer = 0,
+    var shotMaxSpd=xMax*0.05, shotMinSpd = 1, dragVal = 0.01, gravityVal = 0, floorDistBuffer = 0,
         wallCoR = 0.8, floorGravityBuffer = 1, grabCircMassMult = 1000;
     var gravity = true, drag = true, ceiling = true;
 
@@ -69,7 +69,7 @@ $(function() {
     var madeMove = false;
 
     // The minimum speed a ball can move, used to change turns
-    var minimumVelocity = 0.035;
+    var minimumVelocity = 0.07;
 
     var myColor = "rgb(255,105,97)"
     var oppColor = "rgb(96,130,182)"
@@ -77,6 +77,12 @@ $(function() {
     // The ball object that is currently marked
     // Can be used to get the color of the selected ball
     var selectedBall;
+
+    // The number of animation loops to display messages
+    var messageDisplayTime = 200;
+
+    // The number of animation loops the message has been displayed
+    var framesMessageDisplayed = 0;
 
 
     init();
@@ -117,21 +123,21 @@ $(function() {
     }
 
     function populateCirclesWP(){
-        var offset = 0;
+        var offset = 100;
         var r = 0;
         var randColor;
-        for(var i=0; i<7; i++){
-            randColor = randomMixedColor(0, 0, 255);
+        for(var i=0; i<5; i++){
+            //randColor = randomMixedColor(0, 0, 255);
             r = xMax / (25 * ( i/3 +1 ) );
-            circles[i] = new CircleWP(xMin + r + offset, yMax/4, r, 0, 0, myColor);
+            circles[i] = new CircleWP(xMin + 50, yMin + r + offset, r, 0, 0, myColor);
             offset += r * 2 + 15;
         }
-        offset = 0;
+        offset = 100;
         r = 0;
-        for(i=7; i < 14; i++){
-            randColor = randomMixedColor(0, 0, 255);
-            r = xMax / (25 * ( (i-7)/3 +1 ) );
-            circles[i] = new CircleWP(xMin + r + offset, yMax/1.5, r, 0, 0, oppColor);
+        for(i=5; i < 10; i++){
+            //randColor = randomMixedColor(0, 0, 255);
+            r = xMax / (25 * ( (i-5)/3 +1 ) );
+            circles[i] = new CircleWP(canvas1.width - xMin - 50, xMin + r + offset , r, 0, 0, oppColor);
             offset += r * 2 + 15;
         }
     }
@@ -261,13 +267,32 @@ $(function() {
     }
 
     function drawmessage(){
-        context.fillStyle = "black";
-        context.fillText(message, 20, 20);
+
+        // Check if the message should still be displayed
+        if(framesMessageDisplayed <= messageDisplayTime)
+        {
+            // Write the message
+            context.fillStyle = "black";
+            context.font = '30pt Calibri';
+            context.textBaseline = 'middle';
+            context.textAlign = 'center';
+            context.fillText(message,  canvas1.width / 2, canvas1.height / 2);
+
+            // Increase the frame count
+            framesMessageDisplayed++;
+        }
+        else
+        {   
+            // Reset the count and message
+            framesMessageDisplayed = 0;
+            message = "";
+        }
     }
 
     function drawConnStatus(){
         context.fillStyle = "black";
-        context.fillText(conn_status, 10, 10);
+        context.font = '12pt Calibri';
+        context.fillText(conn_status, 55, 15);
     }
 
     function drawPlayerScores(){
@@ -285,12 +310,14 @@ $(function() {
             }
         }
         context.fillStyle = "black";
-        context.fillText("Red:" + redScore, 100, 10);
-        context.fillText("Green:" + greenScore, 150, 10);
+        context.font = '12pt Calibri';
+        context.fillText("Red:" + redScore, 150, 15);
+        context.fillText("Green:" + greenScore, 200, 15);
     }
     function drawCircleID(){
         for (var i=0; i<circles.length; i++){
             context.fillStyle = "black";
+            context.font = '12pt Calibri';
             context.fillText(i.toString() + ' x:' + Math.round(circles[i].xv) + ' y:' + Math.round(circles[i].yv), circles[i].x, circles[i].y);
              //context.fillText(circles[i].yv, circles[i].x, circles[i].y);
             //context.fillText(circles[i].xv, circles[i].x, circles[i].y + 10);
@@ -346,19 +373,18 @@ $(function() {
             // a given minimum velocity
             for (var i = 0; i < circles.length; i++)
             {
+                // If a ball is under a given minimum velocity, stop it
+                if((Math.abs(circles[i].xv) <= minimumVelocity) && (Math.abs(circles[i].yv) <= minimumVelocity))
+                {
+                    circles[i].xv = 0;
+                    circles[i].yv = 0;
+                }
+
                 // If a ball isn't under the given minimum velcity, return
                 if(!(Math.abs(circles[i].xv) <= minimumVelocity) && !(Math.abs(circles[i].yv) <= minimumVelocity))
                 {
                     return;
                 }
-            }
-
-            //Stop all balls completely
-            for (var z = 0; z < circles.length; z++){
-
-                circles[z].xv = 0;
-                circles[z].yv = 0;
-
             }
 
             //All the balls passed the minimum test, pass the turn to the other player
@@ -407,7 +433,7 @@ $(function() {
         drawConnStatus();
         drawPlayerScores();
         drawmessage();
-        drawCircleID();
+        //drawCircleID();
         applyDrag();
         incPos(circles);
         wallCollision(circles, xMin, xMax, yMin, yMax, wallCoR, ceiling);
