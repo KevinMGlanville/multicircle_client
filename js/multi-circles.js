@@ -80,6 +80,8 @@ $(function() {
     // current highest velocity circle
     var high_velocity = 0;
 
+    var audio_counter = 1;
+
     //var myColor = "rgb(255,105,97)";
     //var oppColor = "rgb(96,130,182)";
     var myColor = pastel(240, 240, 20);
@@ -400,7 +402,8 @@ $(function() {
     }
 
     function collisCallback(collisPair){
-        document.getElementById("audio1").play();
+        if(audio_counter >4) audio_counter =1;
+        document.getElementById("audio" + audio_counter++).play();
         //Change color to gray when ever a collision occurs.  This
         //logic will change when we know what colors turn it is.
         //Then we just turn both balls to the player who's turn
