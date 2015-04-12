@@ -23,9 +23,14 @@ $(function() {
     ws.onmessage = function (event) {
         var message_object = JSON.parse(event.data);
         if(message_object['message'] == 'move'){
-            circles[message_object['circle']].xv = message_object['xv'];
-            circles[message_object['circle']].yv = message_object['yv'];
+            for(var i=0; i<circles.length; i++){
+                circles[message_object['move_index']].xv = message_object['move_xv'];
+                circles[message_object['move_index']].yv = message_object['move_yv'];
+                //circles[i].x = message_object['circles'][i].x;
+                //circles[i].y = message_object['circles'][i].y;
+            }
         }
+
         message = event.data ;
     };
 
@@ -51,16 +56,17 @@ $(function() {
     var redScore = 0;
     var turn = 0;
 
-    var mousePoints = [], circles = [], collisPairs = [];
+    var circles = [], collisPairs = [];
+    var mouseX = 0, mouseY = 0;
     // look into changing updates to request_anim_frame rather than framerate (more consistent physics across clients?)
     var msPerFrame = 20;
     var circleCount = 5;
     var xMin = 0, xMax = context.canvas.width, yMin = 0, yMax = context.canvas.height;
     var mPressed = false, mReleased = true, circleMarked = false;
     var markedCircle;
-    var shotMaxSpd=xMax*0.05, shotMinSpd = 1, dragVal = 0.01, gravityVal = 0, floorDistBuffer = 0,
-        wallCoR = 0.8, floorGravityBuffer = 1, grabCircMassMult = 1000;
-    var gravity = true, drag = true, ceiling = true;
+    var shotMaxSpd = xMax / 75, shotSpdAdjust = 0.03, dragVal = 0.01, gravityVal = 0, floorDistBuffer = 0,
+        wallCoR = 0.8;
+    var drag = true, ceiling = true;
 
     // Controls if it is currently this player's turn
     var myTurn = true;
@@ -69,10 +75,16 @@ $(function() {
     var madeMove = false;
 
     // The minimum speed a ball can move, used to change turns
-    var minimumVelocity = 0.07;
+    var minimumVelocity = 0.1;
 
-    var myColor = "rgb(255,105,97)"
-    var oppColor = "rgb(96,130,182)"
+    // current highest velocity circle
+    var high_velocity = 0;
+
+    //var myColor = "rgb(255,105,97)";
+    //var oppColor = "rgb(96,130,182)";
+    var myColor = pastel(240, 240, 20);
+    var oppColor = pastel(0, 255, 255);
+    $('#canvas1').css('background-color', pastel(150, 40, 150));
 
     // The ball object that is currently marked
     // Can be used to get the color of the selected ball
@@ -98,20 +110,7 @@ $(function() {
         this.y = y;
     }
 
-    function Circle() {
-        this.minSize = 10;
-        this.x = Math.random() * xMax;
-        this.y = Math.random() * yMax;
-        this.r = Math.random() * (xMax + yMax) / 100 + this.minSize;
-        this.xv = ( Math.random() > 0.5 ? 1 : (-1) ) * Math.random() * (xMax + yMax) / 150;
-        this.yv = ( Math.random() > 0.5 ? 1 : (-1) ) * Math.random() * (xMax + yMax) / 150;
-        this.m = 4/3 * Math.PI * Math.pow( this.r, 3);
-        this.color = "#" + (Math.random().toString(16) + '000000').slice(2, 8) + "";
-        this.marked = false;
-    }
-
     function CircleWP(x, y, r, xv, yv, color) {
-        this.minSize = 10;
         this.x = x;
         this.y = y;
         this.r = r;
@@ -119,13 +118,11 @@ $(function() {
         this.yv = yv;
         this.m = 4/3 * Math.PI * Math.pow( this.r, 3);
         this.color = color;
-        this.marked = false;
     }
 
     function populateCirclesWP(){
         var offset = 100;
         var r = 0;
-        var randColor;
         for(var i=0; i<5; i++){
             //randColor = randomMixedColor(0, 0, 255);
             r = xMax / (25 * ( i/3 +1 ) );
@@ -142,6 +139,10 @@ $(function() {
         }
     }
 
+    function pastel(r, g, b){
+        return "rgb(" + Math.floor((r+255)/2) + "," + Math.floor((g+255)/2) + "," + Math.floor((b+255)/2) + ")";
+    }
+
     function randomMixedColor(r, g, b){
         var red = Math.random()*255,
             blue = Math.random()*255,
@@ -154,14 +155,14 @@ $(function() {
     function mousePressed(e){
         mPressed = true;
         mReleased = false;
-        logPoint(e.clientX - canvas1.offsetLeft, e.clientY - canvas1.offsetTop);
+        mouseX = e.clientX - canvas1.offsetLeft;
+        mouseY = e.clientY - canvas1.offsetTop;
     }
 
     function mouseReleased(e){
         mPressed = false;
         mReleased = true;
         releaseCircle();
-        clearArr(mousePoints);
     }
 
     // Releases a circle and sends it flying.
@@ -174,14 +175,8 @@ $(function() {
 
             madeMove = true;
 
-            var circle_message = new Object();
-            circle_message['message'] = 'move';
-            circle_message['circle'] = markedCircle;
-            circle_message['xv'] = circles[markedCircle].xv;
-            circle_message['yv'] = circles[markedCircle].yv;
-            ws.send(JSON.stringify(circle_message));
+            send_move();
 
-            circles[markedCircle].marked = false;
             circleMarked = false;
             markedCircle = -1;
         }
@@ -189,18 +184,8 @@ $(function() {
         else if(markedCircle > -1 && !myTurn && oppColor === selectedBall.color && madeMove == false){
             setMarkedVelocity();
             // Indicate the player made a move
-
             madeMove = true;
-
-            var circle_message = new Object();
-            circle_message['message'] = 'move';
-            circle_message['circle'] = markedCircle;
-            circle_message['xv'] = circles[markedCircle].xv;
-            circle_message['yv'] = circles[markedCircle].yv;
-            ws.send(JSON.stringify(circle_message));
-
-            circles[markedCircle].marked = false;
-            circleMarked = false;
+            send_move();
             markedCircle = -1;
         }
         // Unmark the ball if it didn't belong to the player trying to move it
@@ -208,8 +193,6 @@ $(function() {
     }
 
     function setMarkedVelocity(){
-        var mouseX = mousePoints[mousePoints.length-1].x;
-        var mouseY = mousePoints[mousePoints.length-1].y;
         var originX = circles[markedCircle].x;
         var originY = circles[markedCircle].y;
 
@@ -217,28 +200,36 @@ $(function() {
             var dist = distPoints(mouseX, mouseY, originX, originY);
             var xDiffUnit = (mouseX - originX) / dist;
             var yDiffUnit = (mouseY - originY) / dist;
-            circles[markedCircle].xv = xDiffUnit * (shotMaxSpd - shotMinSpd) * dist / Math.sqrt(Math.pow(xMax, 2) + Math.pow(yMax, 2));
-            circles[markedCircle].yv = yDiffUnit * (shotMaxSpd - shotMinSpd) * dist / Math.sqrt(Math.pow(xMax, 2) + Math.pow(yMax, 2));
+            var velocity = Math.min(shotMaxSpd, dist * shotSpdAdjust);
+            circles[markedCircle].xv = xDiffUnit * velocity;
+            circles[markedCircle].yv = yDiffUnit * velocity;
         }
+    }
+
+    function send_move(){
+        var circle_message = new Object();
+        circle_message['message'] = 'move';
+        circle_message['move_index'] = markedCircle;
+        circle_message['move_xv'] = circles[markedCircle].xv;
+        circle_message['move_yv'] = circles[markedCircle].yv;
+        //circle_message['circles'] = circles;
+        ws.send(JSON.stringify(circle_message));
     }
 
     function mouseMoved(e){
         if (mPressed) {
-            logPoint(e.clientX - canvas1.offsetLeft, e.clientY - canvas1.offsetTop);
+            mouseX = e.clientX - canvas1.offsetLeft;
+            mouseY = e.clientY - canvas1.offsetTop;
             if (circleMarked){
                 handleMarkedCircle();
             }
         }
     }
 
-    function logPoint(x, y){
-        mousePoints.push(new Point(x, y));
-    }
-
     function markCircle() {
         if (mPressed && !circleMarked) {
             for (var i=0; i<circles.length; i++){
-                var dist = distPoints(circles[i].x, circles[i].y, mousePoints[mousePoints.length-1].x, mousePoints[mousePoints.length-1].y);
+                var dist = distPoints(circles[i].x, circles[i].y, mouseX, mouseY);
                 if (dist < circles[i].r){
                     circles[i].marked = true;
                     circleMarked = true;
@@ -251,9 +242,6 @@ $(function() {
 
     function handleMarkedCircle(){
         if (markedCircle > -1){
-            //circles[markedCircle].x = mousePoints[mousePoints.length-1].x;
-            //circles[markedCircle].y = mousePoints[mousePoints.length-1].y;
-            //setMarkedVelocity();
         }
     }
 
@@ -300,7 +288,6 @@ $(function() {
         greenScore = 0;
         for(var z = 0; z < circles.length; z++){
             var ballColor = circles[z].color;
-            //console.log(ballColor);
 
             if (ballColor == myColor){
                 redScore++;
@@ -323,6 +310,22 @@ $(function() {
             //context.fillText(circles[i].xv, circles[i].x, circles[i].y + 10);
         }
     }
+    function clipVelocities(){
+        // Check if all balls velocity are under
+        // a given minimum velocity
+        high_velocity = 0;
+        for (var i = 0; i < circles.length; i++)
+        {
+            // stop circles below min velocity
+            var velocity = Math.sqrt( Math.pow(circles[i].xv, 2) + Math.pow(circles[i].yv, 2));
+            if(velocity <= minimumVelocity)
+            {
+                circles[i].xv = 0;
+                circles[i].yv = 0;
+            }
+            high_velocity = Math.max(velocity, high_velocity);
+        }
+    }
 
     // Tests if balls are moving but are under a
     // threshold velocity. If they are, changes the 
@@ -333,38 +336,22 @@ $(function() {
         // if the moved ball is under a certain velocity
         if(madeMove && myTurn)
         {
-            // Check if all balls velocity are under
-            // a given minimum velocity
-            for (var i = 0; i < circles.length; i++)
-            {
-                // If a ball isn't under the given minimum velcity, return
-                if(!(Math.abs(circles[i].xv) <= minimumVelocity) && !(Math.abs(circles[i].yv) <= minimumVelocity))
+            if (high_velocity == 0){
+
+                //All the balls passed the minimum test, pass the turn to the other player
+                myTurn = false;
+                madeMove = false;
+                message = "Turn ended";
+                framesMessageDisplayed = 0;
+
+                //Send the position of all the balls
+                for (var j = 0; j < circles.length; j++)
                 {
-                    return;
+                    //TODO: Waiting for object message structure
                 }
+
+                turn++;
             }
-
-            //Stop all balls completely
-            for (var z = 0; z < circles.length; z++){
-
-                circles[z].xv = 0;
-                circles[z].yv = 0;
-
-            }
-
-            //All the balls passed the minimum test, pass the turn to the other player
-            myTurn = false;
-            madeMove = false;
-            message = "Turn is over!";
-
-            //Send the position of all the balls
-            for (var j = 0; j < circles.length; j++)
-            {
-                //TODO: Waiting for object message structure
-            }
-
-            turn++;
-
         }
         //only for local game
         else if(madeMove && !myTurn)
@@ -413,6 +400,7 @@ $(function() {
     }
 
     function collisCallback(collisPair){
+        document.getElementById("audio1").play();
         //Change color to gray when ever a collision occurs.  This
         //logic will change when we know what colors turn it is.
         //Then we just turn both balls to the player who's turn
@@ -427,11 +415,33 @@ $(function() {
         }
     }
 
+    function drawTrajectory(){
+
+        if(mPressed && mouseX && markedCircle > -1){
+            var originX = circles[markedCircle].x;
+            var originY = circles[markedCircle].y;
+            var dist = distPoints(mouseX, mouseY, originX, originY);
+            var line_dist = Math.min( shotMaxSpd / shotSpdAdjust, dist);
+            var x_unitv = (mouseX - originX) / dist;
+            var y_unitv = (mouseY - originY) / dist;
+            var finalX = x_unitv * line_dist + originX;
+            var finalY = y_unitv * line_dist + originY;
+            if(Math.abs(mouseX-originX) > 0 || Math.abs(mouseY-originY)>0) {
+                context.beginPath();
+                context.moveTo(originX, originY);
+                context.lineTo(finalX, finalY);
+                context.strokeStyle = "rgb(100, 100, 100)";
+                context.lineWidth=10;
+                context.lineCap = "round";
+                context.stroke();
+            }
+        }
+    }
+
     function updateCircles(){
         clearCanvas();
-        drawCircles(circles, context);
         drawConnStatus();
-        drawPlayerScores();
+        //drawPlayerScores();
         drawmessage();
         //drawCircleID();
         applyDrag();
@@ -441,5 +451,7 @@ $(function() {
         mouseInteract();
         // Check if it's time to change turns
         changeTurns();
+        drawTrajectory();
+        drawCircles(circles, context);
     }
 });
