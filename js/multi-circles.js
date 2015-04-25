@@ -1,5 +1,7 @@
 /**
  * @author Kevin Glanville
+ * @author Curtis Clements
+ * @author Jake Pitkin
  */
 
 
@@ -36,19 +38,26 @@ $(function() {
 
     $("#send").on('click', function (event) {
         var test_object = new Object();
-        test_object['message'] = $("#text").val();
+        test_object['message'] = 'join';
+        test_object['game'] = $("#text").val();
         var send_object = JSON.stringify(test_object);
         ws.send(send_object);
+        $("#send").prop('disabled', true);
     });
 
     // circle handling
     var canvas1 = document.getElementById("canvas1");
     var context = canvas1.getContext("2d");
+    context.webkitImageSmoothingEnabled = false;
+    context.mozImageSmoothingEnabled = false;
     context.canvas.width  = 800;
     context.canvas.height = 500;
-    document.addEventListener("mousedown", mousePressed);
-    document.addEventListener("mouseup", mouseReleased);
-    document.addEventListener("mousemove", mouseMoved);
+    document.getElementById("canvas1").addEventListener("mousedown", mousePressed);
+    document.getElementById("canvas1").addEventListener("mouseup", mouseReleased);
+    document.getElementById("canvas1").addEventListener("mousemove", mouseMoved);
+    document.getElementById("canvas1").addEventListener("touchstart", touchStart);
+    document.getElementById("canvas1").addEventListener("touchend", touchEnd);
+    document.getElementById("canvas1").addEventListener("touchmove", touchMove);
 
     var conn_status =  "Not connected";
     var message = "";
@@ -75,7 +84,7 @@ $(function() {
     var madeMove = false;
 
     // The minimum speed a ball can move, used to change turns
-    var minimumVelocity = 0.1;
+    var minimumVelocity = 0.25;
 
     // current highest velocity circle
     var high_velocity = 0;
@@ -84,9 +93,14 @@ $(function() {
 
     //var myColor = "rgb(255,105,97)";
     //var oppColor = "rgb(96,130,182)";
-    var myColor = pastel(240, 240, 20);
-    var oppColor = pastel(0, 255, 255);
-    $('#canvas1').css('background-color', pastel(150, 40, 150));
+    //var myColor = pastel(240, 240, 20);
+    //var oppColor = pastel(0, 255, 255);
+    //$('#canvas1').css('background-color', pastel(0, 0, 0));
+
+    var myColor = "rgb(254, 159, 26)";
+    //var oppColor = "rgb(0, 202, 53)";
+    var oppColor = "rgb(200, 200, 200)";
+    $('#canvas1').css('background-color', "rgb(0, 0, 0)");
 
     // The ball object that is currently marked
     // Can be used to get the color of the selected ball
@@ -161,10 +175,43 @@ $(function() {
         mouseY = e.clientY - canvas1.offsetTop;
     }
 
+    function touchStart(e){
+        mPressed = true;
+        mReleased = false;
+        mouseX = e.targetTouches[0].clientX - canvas1.offsetLeft;
+        mouseY = e.targetTouches[0].clientY - canvas1.offsetTop;
+    }
+
     function mouseReleased(e){
         mPressed = false;
         mReleased = true;
         releaseCircle();
+    }
+
+    function touchEnd(e){
+        mPressed = false;
+        mReleased = true;
+        releaseCircle();
+    }
+
+    function mouseMoved(e){
+        if (mPressed) {
+            mouseX = e.clientX - canvas1.offsetLeft;
+            mouseY = e.clientY - canvas1.offsetTop;
+            if (circleMarked){
+                handleMarkedCircle();
+            }
+        }
+    }
+
+    function touchMove(e){
+        if (mPressed) {
+            mouseX = e.targetTouches[0].clientX - canvas1.offsetLeft;
+            mouseY = e.targetTouches[0].clientY - canvas1.offsetTop;
+            if (circleMarked){
+                handleMarkedCircle();
+            }
+        }
     }
 
     // Releases a circle and sends it flying.
@@ -218,15 +265,6 @@ $(function() {
         ws.send(JSON.stringify(circle_message));
     }
 
-    function mouseMoved(e){
-        if (mPressed) {
-            mouseX = e.clientX - canvas1.offsetLeft;
-            mouseY = e.clientY - canvas1.offsetTop;
-            if (circleMarked){
-                handleMarkedCircle();
-            }
-        }
-    }
 
     function markCircle() {
         if (mPressed && !circleMarked) {
@@ -312,6 +350,7 @@ $(function() {
             //context.fillText(circles[i].xv, circles[i].x, circles[i].y + 10);
         }
     }
+
     function clipVelocities(){
         // Check if all balls velocity are under
         // a given minimum velocity
@@ -433,9 +472,10 @@ $(function() {
                 context.beginPath();
                 context.moveTo(originX, originY);
                 context.lineTo(finalX, finalY);
-                context.strokeStyle = "rgb(100, 100, 100)";
-                context.lineWidth=10;
-                context.lineCap = "round";
+                //context.strokeStyle = "rgb(100, 100, 100)";
+                context.strokeStyle = "rgb(49, 245, 88)";
+                context.lineWidth=2;
+                //context.lineCap = "round";
                 context.stroke();
             }
         }
@@ -453,6 +493,7 @@ $(function() {
         collisions(circles, collisPairs, collisCallback);
         mouseInteract();
         // Check if it's time to change turns
+        clipVelocities();
         changeTurns();
         drawTrajectory();
         drawCircles(circles, context);
