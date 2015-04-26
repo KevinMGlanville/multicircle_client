@@ -10,6 +10,10 @@ $(function() {
     var websocket_url = "ws://" + window.location.hostname + ":8080";
     // declare ws up here so we can swap it out
     var ws;
+
+    // 'buffer' for moves in case the local client runs the simulation slow than the remote client
+    var stored_move = "";
+
     // clicking 'open' creates a new socket at the url entered
     ws = new WebSocket(websocket_url);
 
@@ -24,13 +28,29 @@ $(function() {
 
     ws.onmessage = function (event) {
         var message_object = JSON.parse(event.data);
+
+        // process remote move
         if(message_object['message'] == 'move'){
-            for(var i=0; i<circles.length; i++){
-                circles[message_object['move_index']].xv = message_object['move_xv'];
-                circles[message_object['move_index']].yv = message_object['move_yv'];
-                //circles[i].x = message_object['circles'][i].x;
-                //circles[i].y = message_object['circles'][i].y;
+            stored_move = message_object;
+            if(game_state == StateEnum.WAITING_FOR_REMOTE_MOVE){
+                process_remote_move();
             }
+        }
+
+        // assign players
+        if(message_object['message'] == 'player1'){
+            local_player = 'player1';
+            myColor = PlayerColors.P1;
+            oppColor = PlayerColors.P2;
+            game_state = StateEnum.WAITING_FOR_LOCAL_MOVE;
+            console.log(game_state);
+        }
+        if(message_object['message'] == 'player2'){
+            local_player = 'player2';
+            myColor = PlayerColors.P2
+            oppColor = PlayerColors.P1;
+            game_state = StateEnum.WAITING_FOR_REMOTE_MOVE;
+            console.log(game_state);
         }
 
         message = event.data ;
@@ -59,50 +79,52 @@ $(function() {
 
     var conn_status =  "Not connected";
     var message = "";
-    var greenScore = 0;
-    var redScore = 0;
-    var turn = 0;
 
     var circles = [], collisPairs = [];
     var mouseX = 0, mouseY = 0;
     var msPerFrame = 20;
-    var circleCount = 5;
     var xMin = 0, xMax = context.canvas.width, yMin = 0, yMax = context.canvas.height;
     var mPressed = false, mReleased = true, circleMarked = false;
-    var markedCircle;
-    var shotMaxSpd = xMax / 75, shotSpdAdjust = 0.05, dragVal = 0.01, gravityVal = 0, floorDistBuffer = 0,
-        wallCoR = 0.8;
+    var markedCircle = -1;
+    var shotMaxSpd = xMax / 75, shotSpdAdjust = 0.05, dragVal = 0.01, wallCoR = 0.8;
     var drag = true, ceiling = true;
-
-    // Controls if it is currently this player's turn
-    var myTurn = true;
-
-    // Keeps track of if the active player made a move
-    var madeMove = false;
-
     // The minimum speed a ball can move, used to change turns
     var minimumVelocity = 0.05;
 
+    // 'player1' or 'player2'
+    var local_player;
+
+    var PlayerColors = {
+        //var p1 = "rgb(255,105,97)";
+        //var p2 = "rgb(96,130,182)";
+        //var p1 = pastel(240, 240, 20);
+        //var p2 = pastel(0, 255, 255);
+        //var p2 = "rgb(0, 202, 53)";
+
+        P1: "rgb(254, 159, 26)",
+        P2: "rgb(200, 200, 200)"
+    }
+
+    var myColor = "rgb(0, 0, 0)", oppColor = "rgb(0, 0, 0)";
+
+    // canvas color
+    //$('#canvas1').css('background-color', pastel(0, 0, 0));
+    $('#canvas1').css('background-color', "rgb(0, 0, 0)");
+    var inertColor = "rgb(50, 50, 50)";
+
     // current highest velocity circle
     var high_velocity = 0;
-
     var audio_counter = 1;
 
-    //var myColor = "rgb(255,105,97)";
-    //var oppColor = "rgb(96,130,182)";
-    //var myColor = pastel(240, 240, 20);
-    //var oppColor = pastel(0, 255, 255);
-    //$('#canvas1').css('background-color', pastel(0, 0, 0));
-
-    var myColor = "rgb(254, 159, 26)";
-    //var oppColor = "rgb(0, 202, 53)";
-    var oppColor = "rgb(200, 200, 200)";
-    var inertColor = "rgb(50, 50, 50)";
-    $('#canvas1').css('background-color', "rgb(0, 0, 0)");
-
-    // The ball object that is currently marked
-    // Can be used to get the color of the selected ball
-    var selectedBall;
+    // enum defining possible game states
+    var StateEnum = {
+        START: "players haven't been assigned",
+        WAITING_FOR_REMOTE_MOVE: "waiting for the remote player's move",
+        WAITING_FOR_LOCAL_MOVE: "waiting for local player to make a move",
+        WAITING_FOR_REMOTE_ZERO: "waiting for circles to reach zero velocity after remote move",
+        WAITING_FOR_LOCAL_ZERO: "waiting for circles to reach zero velocity after local move"
+    }
+    var game_state = StateEnum.START;
 
     // The number of animation loops to display messages
     var messageDisplayTime = 200;
@@ -120,18 +142,20 @@ $(function() {
 
     // game world step
     function updateCircles(){
+        if(game_state == StateEnum.WAITING_FOR_LOCAL_ZERO || game_state == StateEnum.WAITING_FOR_REMOTE_ZERO){
+            applyDrag();
+            incPos(circles);
+            wallCollision(circles, xMin, xMax, yMin, yMax, wallCoR, ceiling);
+            collisions(circles, collisPairs, collisCallback);
+            clipVelocities();
+            changeTurns();
+        }
         clearCanvas();
-        drawConnStatus();
         drawmessage();
-        applyDrag();
-        incPos(circles);
-        wallCollision(circles, xMin, xMax, yMin, yMax, wallCoR, ceiling);
-        collisions(circles, collisPairs, collisCallback);
-        mouseInteract();
-        clipVelocities();
-        changeTurns();
-        drawTrajectory();
+        drawConnStatus();
         drawCircles(circles, context);
+        drawTrajectory();
+        mouseInteract();
     }
 
     // a circle with information
@@ -152,7 +176,7 @@ $(function() {
 
         for(var i=0; i<pieces; i++){
             r = Math.sqrt((i + 5) * 40);
-            circles[i] = new CircleWP(xMin + 50, yMin + r + voffset, r, 0, 0, i % 2 == 0 ? myColor : inertColor);
+            circles[i] = new CircleWP(xMin + 50, yMin + r + voffset, r, 0, 0, i % 2 == 0 ? PlayerColors.P1 : inertColor);
             voffset += r * 2 + 15;
         }
 
@@ -160,7 +184,7 @@ $(function() {
         r = 0;
         for(var i=0; i<pieces; i++){
             r = Math.sqrt((i + 5) * 40);
-            circles[i+pieces] = new CircleWP(canvas1.width - xMin - 50, yMin + r + voffset, r, 0, 0, i % 2 == 0 ? oppColor : inertColor);
+            circles[i+pieces] = new CircleWP(canvas1.width - xMin - 50, yMin + r + voffset, r, 0, 0, i % 2 == 0 ? PlayerColors.P2 : inertColor);
             voffset += r * 2 + 15;
         }
 
@@ -168,6 +192,15 @@ $(function() {
 
     function pastel(r, g, b){
         return "rgb(" + Math.floor((r+255)/2) + "," + Math.floor((g+255)/2) + "," + Math.floor((b+255)/2) + ")";
+    }
+
+    // set circle velocity and game state
+    function process_remote_move(){
+        circles[stored_move['move_index']].xv = stored_move['move_xv'];
+        circles[stored_move['move_index']].yv = stored_move['move_yv'];
+        stored_move = "";
+        game_state = StateEnum.WAITING_FOR_REMOTE_ZERO;
+        console.log(game_state);
     }
 
     // mouse and touchscreen events to track position
@@ -220,26 +253,17 @@ $(function() {
     // This method does nothing if the selected ball isn't
     // yours or if it isn't your turn.
     function releaseCircle(){
-        if(markedCircle > -1 && myTurn && myColor === selectedBall.color && madeMove == false){
+        if(markedCircle > -1 &&
+            circles[markedCircle].color == myColor &&
+            game_state == StateEnum.WAITING_FOR_LOCAL_MOVE)
+        {
             setMarkedVelocity();
             // Indicate the player made a move
-
-            madeMove = true;
-
             send_move();
-
-            circleMarked = false;
-            markedCircle = -1;
+            game_state = StateEnum.WAITING_FOR_LOCAL_ZERO;
+            console.log(game_state);
         }
-        //only for local game testing
-        else if(markedCircle > -1 && !myTurn && oppColor === selectedBall.color && madeMove == false){
-            setMarkedVelocity();
-            // Indicate the player made a move
-            madeMove = true;
-            send_move();
-            markedCircle = -1;
-        }
-        // unmark the ball if it didn't belong to the player trying to move it
+        markedCircle = -1
         circleMarked = false;
     }
 
@@ -277,7 +301,6 @@ $(function() {
                     circles[i].marked = true;
                     circleMarked = true;
                     markedCircle = i;
-                    selectedBall = circles[i];
                 }
             }
         }
@@ -297,23 +320,17 @@ $(function() {
     function drawmessage(){
 
         // Check if the message should still be displayed
-        if(framesMessageDisplayed <= messageDisplayTime)
+        if(message)
         {
             // Write the message
             context.fillStyle = "black";
-            context.font = '30pt Calibri';
+            context.font = '20pt Calibri';
             context.textBaseline = 'middle';
             context.textAlign = 'center';
             context.fillText(message,  canvas1.width / 2, canvas1.height / 2);
 
             // Increase the frame count
             framesMessageDisplayed++;
-        }
-        else
-        {
-            // Reset the count and message
-            framesMessageDisplayed = 0;
-            message = "";
         }
     }
 
@@ -374,66 +391,26 @@ $(function() {
     }
 
     // Tests if balls are moving but are under a
-    // threshold velocity. If they are, changes the 
+    // threshold velocity. If they are, changes the
     // turn and sends the position of each
     // ball on the screen to the opponent
     function changeTurns(){
-        // Tests if the player made a move and
-        // if the moved ball is under a certain velocity
-        if(madeMove && myTurn)
-        {
-            if (high_velocity == 0){
-
-                console.log("zeroed");
-                //All the balls passed the minimum test, pass the turn to the other player
-                myTurn = false;
-                madeMove = false;
+        if (high_velocity == 0){
+            // Tests if the player made a move and
+            // if the moved ball is under a certain velocity
+            if(game_state == StateEnum.WAITING_FOR_LOCAL_ZERO)
+            {
+                game_state = StateEnum.WAITING_FOR_REMOTE_MOVE;
+                console.log(game_state);
+                if(stored_move)
+                    process_remote_move();
                 message = "Turn ended";
                 framesMessageDisplayed = 0;
-
-                //Send the position of all the balls
-                for (var j = 0; j < circles.length; j++)
-                {
-                    //TODO: Waiting for object message structure
-                }
-
-                turn++;
             }
-        }
-        //only for local game
-        else if(madeMove && !myTurn)
-        {
-            // Check if all balls velocity are under
-            // a given minimum velocity
-            for (var i = 0; i < circles.length; i++)
-            {
-                // If a ball is under a given minimum velocity, stop it
-                if((Math.abs(circles[i].xv) <= minimumVelocity) && (Math.abs(circles[i].yv) <= minimumVelocity))
-                {
-                    circles[i].xv = 0;
-                    circles[i].yv = 0;
-                }
-
-                // If a ball isn't under the given minimum velcity, return
-                if(!(Math.abs(circles[i].xv) <= minimumVelocity) && !(Math.abs(circles[i].yv) <= minimumVelocity))
-                {
-                    return;
-                }
+            if(game_state == StateEnum.WAITING_FOR_REMOTE_ZERO){
+                game_state = StateEnum.WAITING_FOR_LOCAL_MOVE;
+                console.log(game_state);
             }
-
-            //All the balls passed the minimum test, pass the turn to the other player
-            myTurn = true;
-            madeMove = false;
-            message = "Turn is over!";
-
-            //Send the position of all the balls
-            for (var j = 0; j < circles.length; j++)
-            {
-                //TODO: Waiting for object message structure
-            }
-
-            turn++;
-
         }
     }
 
@@ -453,19 +430,17 @@ $(function() {
         // if collision is between two opposing colors, swap the colors appropriately
         var c1 = collisPair.c1, c2 = collisPair.c2;
         var colorSwap = false;
-        if (c1.color != c2.color && c1.color != inertColor && c2.color != inertColor)
+        if (c1.color != inertColor && c2.color != inertColor)
             colorSwap = true;
-        if(colorSwap){
-            if(turn % 2 == 0) {
-                collisPair.c1.color = myColor;
-                collisPair.c2.color = myColor;
-            }
-            else{
-                collisPair.c1.color = oppColor;
-                collisPair.c2.color = oppColor;
-            }
+        if(colorSwap && game_state == StateEnum.WAITING_FOR_REMOTE_ZERO){
+            collisPair.c1.color = oppColor;
+            collisPair.c2.color = oppColor;
         }
-    }
+        if(colorSwap && game_state == StateEnum.WAITING_FOR_LOCAL_ZERO){
+            collisPair.c1.color = myColor;
+            collisPair.c2.color = myColor;
+        }
+   }
 
     // draw a line that indicates the velocity to be applied to the circle
     // the maximum extent of the line indicates the point at which maximum velocity is applied
