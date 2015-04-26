@@ -19,11 +19,11 @@ $(function() {
 
     // swap buttons around when socket is open
     ws.onopen = function open() {
-        conn_status = "Connected";
+        conn_status = "connected";
     };
 
     ws.onclose = function (event) {
-        conn_status = "Not connected";
+        conn_status = "not connected";
     };
 
     ws.onmessage = function (event) {
@@ -37,23 +37,24 @@ $(function() {
             }
         }
 
+        if(message_object['message'] == 'opponent exit'){
+            message = 'Opponent left';
+            ws.close();
+        }
+
         // assign players
         if(message_object['message'] == 'player1'){
             local_player = 'player1';
             myColor = PlayerColors.P1;
             oppColor = PlayerColors.P2;
-            game_state = StateEnum.WAITING_FOR_LOCAL_MOVE;
-            console.log(game_state);
+            changeGameState(StateEnum.WAITING_FOR_LOCAL_MOVE);
         }
         if(message_object['message'] == 'player2'){
             local_player = 'player2';
             myColor = PlayerColors.P2
             oppColor = PlayerColors.P1;
-            game_state = StateEnum.WAITING_FOR_REMOTE_MOVE;
-            console.log(game_state);
+            changeGameState(StateEnum.WAITING_FOR_REMOTE_MOVE);
         }
-
-        message = event.data ;
     };
 
     $("#send").on('click', function (event) {
@@ -77,7 +78,7 @@ $(function() {
     document.addEventListener("touchend", touchEnd);
     document.addEventListener("touchmove", touchMove);
 
-    var conn_status =  "Not connected";
+    var conn_status =  "not connected";
     var message = "";
 
     var circles = [], collisPairs = [];
@@ -124,25 +125,20 @@ $(function() {
         WAITING_FOR_REMOTE_ZERO: "waiting for circles to reach zero velocity after remote move",
         WAITING_FOR_LOCAL_ZERO: "waiting for circles to reach zero velocity after local move"
     }
-    var game_state = StateEnum.START;
-
-    // The number of animation loops to display messages
-    var messageDisplayTime = 200;
-
-    // The number of animation loops the message has been displayed
-    var framesMessageDisplayed = 0;
-
+    var game_state;
+    changeGameState(StateEnum.START);
 
     init();
 
     function init() {
         populateCirclesWP();
-        setInterval(updateCircles, msPerFrame);
+        setInterval(updateGame, msPerFrame);
     }
 
     // game world step
-    function updateCircles(){
-        if(game_state == StateEnum.WAITING_FOR_LOCAL_ZERO || game_state == StateEnum.WAITING_FOR_REMOTE_ZERO){
+    function updateGame(){
+        if(game_state == StateEnum.WAITING_FOR_LOCAL_ZERO ||
+            game_state == StateEnum.WAITING_FOR_REMOTE_ZERO){
             applyDrag();
             incPos(circles);
             wallCollision(circles, xMin, xMax, yMin, yMax, wallCoR, ceiling);
@@ -151,7 +147,7 @@ $(function() {
             changeTurns();
         }
         clearCanvas();
-        drawmessage();
+        drawMessage();
         drawConnStatus();
         drawCircles(circles, context);
         drawTrajectory();
@@ -199,8 +195,21 @@ $(function() {
         circles[stored_move['move_index']].xv = stored_move['move_xv'];
         circles[stored_move['move_index']].yv = stored_move['move_yv'];
         stored_move = "";
-        game_state = StateEnum.WAITING_FOR_REMOTE_ZERO;
+        changeGameState(StateEnum.WAITING_FOR_REMOTE_ZERO);
         console.log(game_state);
+    }
+
+    function changeGameState(gs){
+        game_state = gs;
+
+        if(game_state == StateEnum.WAITING_FOR_LOCAL_ZERO ||
+            game_state == StateEnum.WAITING_FOR_REMOTE_ZERO){
+            message = '...';
+        }
+        if(game_state == StateEnum.WAITING_FOR_LOCAL_MOVE)
+            message = "Your move";
+        if(game_state == StateEnum.WAITING_FOR_REMOTE_MOVE)
+            message = "Opponent's move";
     }
 
     // mouse and touchscreen events to track position
@@ -260,8 +269,7 @@ $(function() {
             setMarkedVelocity();
             // Indicate the player made a move
             send_move();
-            game_state = StateEnum.WAITING_FOR_LOCAL_ZERO;
-            console.log(game_state);
+            changeGameState(StateEnum.WAITING_FOR_LOCAL_ZERO);
         }
         markedCircle = -1
         circleMarked = false;
@@ -317,28 +325,27 @@ $(function() {
     }
 
     // draw messages from the server
-    function drawmessage(){
+    function drawMessage(){
 
         // Check if the message should still be displayed
         if(message)
         {
             // Write the message
-            context.fillStyle = "black";
-            context.font = '20pt Calibri';
+            context.fillStyle = "rgb(49, 245, 88)";
+            context.font = '15pt Courier New';
             context.textBaseline = 'middle';
             context.textAlign = 'center';
             context.fillText(message,  canvas1.width / 2, canvas1.height / 2);
-
-            // Increase the frame count
-            framesMessageDisplayed++;
         }
     }
 
     // draw status of websocket connection
     function drawConnStatus(){
-        context.fillStyle = "black";
-        context.font = '12pt Calibri';
-        context.fillText(conn_status, 55, 15);
+        context.fillStyle = "rgb(49, 245, 88)";
+        context.font = '12pt Courier New';
+        context.textBaseline = 'middle';
+        context.textAlign = 'center';
+        context.fillText(conn_status, xMax/2, 15);
     }
 
     // draw number of circles for each side
@@ -400,17 +407,12 @@ $(function() {
             // if the moved ball is under a certain velocity
             if(game_state == StateEnum.WAITING_FOR_LOCAL_ZERO)
             {
-                game_state = StateEnum.WAITING_FOR_REMOTE_MOVE;
-                console.log(game_state);
+                changeGameState(StateEnum.WAITING_FOR_REMOTE_MOVE);
                 if(stored_move)
                     process_remote_move();
-                message = "Turn ended";
-                framesMessageDisplayed = 0;
             }
-            if(game_state == StateEnum.WAITING_FOR_REMOTE_ZERO){
-                game_state = StateEnum.WAITING_FOR_LOCAL_MOVE;
-                console.log(game_state);
-            }
+            if(game_state == StateEnum.WAITING_FOR_REMOTE_ZERO)
+                changeGameState(StateEnum.WAITING_FOR_LOCAL_MOVE);
         }
     }
 
