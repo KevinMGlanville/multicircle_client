@@ -64,6 +64,7 @@ $(function() {
         var send_object = JSON.stringify(test_object);
         ws.send(send_object);
         $("#send").prop('disabled', true);
+        message = 'Waiting for opponent';
     });
 
     // circle handling
@@ -87,7 +88,7 @@ $(function() {
     var xMin = 0, xMax = context.canvas.width, yMin = 0, yMax = context.canvas.height;
     var mPressed = false, mReleased = true, circleMarked = false;
     var markedCircle = -1;
-    var shotMaxSpd = xMax / 75, shotSpdAdjust = 0.05, dragVal = 0.01, wallCoR = 0.8;
+    var shotMaxSpd = 27, shotSpdAdjust = 0.13, dragVal = 0.025, wallCoR = 0.8;
     var drag = true, ceiling = true;
     // The minimum speed a ball can move, used to change turns
     var minimumVelocity = 0.05;
@@ -325,12 +326,18 @@ $(function() {
 
     // draw messages from the server
     function drawMessage(){
-
-        // Check if the message should still be displayed
         if(message)
         {
             // Write the message
-            context.fillStyle = "rgb(49, 245, 88)";
+            if(game_state == StateEnum.WAITING_FOR_LOCAL_MOVE ||
+                game_state == StateEnum.WAITING_FOR_LOCAL_ZERO)
+                context.fillStyle = myColor;
+            else if(game_state == StateEnum.WAITING_FOR_REMOTE_MOVE ||
+                game_state == StateEnum.WAITING_FOR_REMOTE_ZERO)
+                context.fillStyle = oppColor;
+            else
+                context.fillStyle = "rgb(49, 245, 88)";
+
             context.font = '15pt Courier New';
             context.textBaseline = 'middle';
             context.textAlign = 'center';
@@ -349,22 +356,22 @@ $(function() {
 
     // draw number of circles for each side
     function drawPlayerScores(){
-        redScore = 0;
-        greenScore = 0;
+        localScore = 0;
+        remoteScore = 0;
         for(var z = 0; z < circles.length; z++){
             var ballColor = circles[z].color;
 
             if (ballColor == myColor){
-                redScore++;
+                localScore++;
             }
             else if(ballColor == oppColor){
-                greenScore++;
+                remoteScore++;
             }
         }
         context.fillStyle = "black";
         context.font = '12pt Calibri';
-        context.fillText("Red:" + redScore, 150, 15);
-        context.fillText("Green:" + greenScore, 200, 15);
+        context.fillText("Red:" + localScore, 150, 15);
+        context.fillText("Green:" + remoteScore, 200, 15);
     }
 
     // mark circles with some information (useful for debugging)
