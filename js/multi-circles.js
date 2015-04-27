@@ -137,15 +137,12 @@ $(function() {
 
     // game world step
     function updateGame(){
-        if(game_state == StateEnum.WAITING_FOR_LOCAL_ZERO ||
-            game_state == StateEnum.WAITING_FOR_REMOTE_ZERO){
-            applyDrag();
-            incPos(circles);
-            wallCollision(circles, xMin, xMax, yMin, yMax, wallCoR, ceiling);
-            collisions(circles, collisPairs, collisCallback);
-            clipVelocities();
-            changeTurns();
-        }
+        applyDrag();
+        incPos(circles);
+        wallCollision(circles, xMin, xMax, yMin, yMax, wallCoR, ceiling);
+        collisions(circles, collisPairs, collisCallback);
+        clipVelocities();
+        changeTurns();
         clearCanvas();
         drawMessage();
         drawConnStatus();
@@ -196,10 +193,10 @@ $(function() {
         circles[stored_move['move_index']].yv = stored_move['move_yv'];
         stored_move = "";
         changeGameState(StateEnum.WAITING_FOR_REMOTE_ZERO);
-        console.log(game_state);
     }
 
     function changeGameState(gs){
+        console.log('Change game state from: ' + game_state + ' to: ' + gs);
         game_state = gs;
 
         if(game_state == StateEnum.WAITING_FOR_LOCAL_ZERO ||
@@ -222,9 +219,9 @@ $(function() {
 
     // mouse and touchscreen events to track position
     function touchStart(e){
+        console.log(mouseX = e.targetTouches[0].clientX - canvas1.offsetLeft);
         mPressed = true;
         mReleased = false;
-        mouseX = e.targetTouches[0].clientX - canvas1.offsetLeft;
         mouseY = e.targetTouches[0].clientY - canvas1.offsetTop;
     }
 
@@ -411,8 +408,10 @@ $(function() {
                 if(stored_move)
                     process_remote_move();
             }
-            if(game_state == StateEnum.WAITING_FOR_REMOTE_ZERO)
-                changeGameState(StateEnum.WAITING_FOR_LOCAL_MOVE);
+            else{
+                if(game_state == StateEnum.WAITING_FOR_REMOTE_ZERO)
+                    changeGameState(StateEnum.WAITING_FOR_LOCAL_MOVE);
+            }
         }
     }
 
