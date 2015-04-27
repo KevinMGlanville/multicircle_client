@@ -74,9 +74,9 @@ $(function() {
     document.addEventListener("mousedown", mousePressed);
     document.addEventListener("mouseup", mouseReleased);
     document.addEventListener("mousemove", mouseMoved);
-    document.addEventListener("touchstart", touchStart);
-    document.addEventListener("touchend", touchEnd);
-    document.addEventListener("touchmove", touchMove);
+    canvas1.addEventListener("touchstart", touchStart);
+    canvas1.addEventListener("touchend", touchEnd);
+    canvas1.addEventListener("touchmove", touchMove);
 
     var conn_status =  "not connected";
     var message = "";
@@ -219,6 +219,7 @@ $(function() {
 
     // mouse and touchscreen events to track position
     function touchStart(e){
+        e.preventDefault();
         console.log(mouseX = e.targetTouches[0].clientX - canvas1.offsetLeft);
         mPressed = true;
         mReleased = false;
@@ -249,6 +250,7 @@ $(function() {
 
     // mouse and touchscreen events to track position
     function touchMove(e){
+        e.preventDefault();
         if (mPressed) {
             mouseX = e.targetTouches[0].clientX - canvas1.offsetLeft;
             mouseY = e.targetTouches[0].clientY - canvas1.offsetTop;
