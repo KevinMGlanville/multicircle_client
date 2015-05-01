@@ -1,4 +1,8 @@
 <!DOCTYPE html>
+<meta name="author" content="Curtis Clements">
+<meta name="author" content="Jake Pitkin">
+<meta name="author" content="Kevin Glanville">
+
 <html>
 <head>
     <title>Multicircle</title>
@@ -7,19 +11,21 @@
 </head>
 
 <body>
-<input id="send" type="button" class="btn" value="Join game: " />
-<input id="text" value="random"/><br />
-<div id="message"></div>
-<canvas id="canvas1" style="cursor: cell;">
-    This text is displayed if your browser does not support HTML5 Canvas.
-</canvas>
-<audio id="audio1" src="resources/1.wav" ></audio>
-<audio id="audio2" src="resources/2.wav" ></audio>
-<audio id="audio3" src="resources/3.wav" ></audio>
-<audio id="audio4" src="resources/4.wav" ></audio>
-<script src="js/multi-circles.js"></script>
-<script id="circleMath" src="js/circleMath.js" id="circleMath"></script>
+    <input id="join" type="button" class="btn" value="Join game: " />
+    <input id="text" value="random"/><br />
 
+    <div id="message"></div>
+    <canvas id="game_canvas">
+        This text is displayed if your browser does not support HTML5 Canvas.
+    </canvas>
 
+    <audio id="audio1" src="resources/1.wav" ></audio>
+    <audio id="audio2" src="resources/2.wav" ></audio>
+    <audio id="audio3" src="resources/3.wav" ></audio>
+    <audio id="audio4" src="resources/4.wav" ></audio>
+
+    <script src="js/circle_world.js"></script>
+    <script src="js/circle_math.js" id="circleMath"></script>
+    <script src="js/multi_circles.js"></script>
 </body>
 </html>

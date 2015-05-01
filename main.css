@@ -1,12 +1,8 @@
 body, html {
-    /*
-    background-color: #353839;
-    */
     background-color: #000000;
 }
 
-#canvas1 {
-    /* background-color: #E6E6FA; */
+canvas {
     margin-top: 10px;
     padding-left: 0;
     padding-right: 0;
@@ -14,8 +10,7 @@ body, html {
     margin-right: auto;
     display: block;
     width: 800px;
-    /*
-    */
+    cursor: cell;
     border-radius: 15px;
     border: solid #31f558 2px;
 }
