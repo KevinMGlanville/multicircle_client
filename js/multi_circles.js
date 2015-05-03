@@ -131,7 +131,7 @@ $(function() {
         if(message_object['message'] == 'move'){
             stored_move = message_object;
             if(game_state == StateEnum.WAITING_FOR_REMOTE_MOVE){
-                process_remote_move();
+                processRemoteMove();
             }
         }
 
@@ -168,7 +168,7 @@ $(function() {
     });
 
     // set circle velocity and game state
-    function process_remote_move(){
+    function processRemoteMove(){
         circle_world.circles[stored_move['move_index']].xv = stored_move['move_xv'];
         circle_world.circles[stored_move['move_index']].yv = stored_move['move_yv'];
         stored_move = "";
@@ -177,7 +177,7 @@ $(function() {
 
 
     // send the moved circle to the server
-    function send_move(){
+    function sendMove(){
         var circle_message = new Object();
         circle_message['message'] = 'move';
         circle_message['move_index'] = circle_world.markedCircle;
@@ -201,7 +201,7 @@ $(function() {
         {
             circle_world.setMarkedVelocity();
             // Indicate the player made a move
-            send_move();
+            sendMove();
             changeGameState(StateEnum.WAITING_FOR_LOCAL_ZERO);
         }
         circle_world.markedCircle = -1
@@ -253,7 +253,7 @@ $(function() {
             {
                 changeGameState(StateEnum.WAITING_FOR_REMOTE_MOVE);
                 if(stored_move)
-                    process_remote_move();
+                    processRemoteMove();
             }
             else{
                 if(game_state == StateEnum.WAITING_FOR_REMOTE_ZERO)
