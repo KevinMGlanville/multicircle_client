@@ -2,6 +2,9 @@
  * Run a game client, including message handling, physics/drawing, and game state
  *
  * @author Kevin Glanville
+ *
+ * enhancements from a project by:
+ * @author Kevin Glanville
  * @author Curtis Clements
  * @author Jake Pitkin
  */
@@ -22,6 +25,10 @@ $(function() {
     game_canvas.addEventListener("touchstart", touchStart);
     game_canvas.addEventListener("touchend", touchEnd);
     game_canvas.addEventListener("touchmove", touchMove);
+    document.getElementById("chat_msg").addEventListener("focus", select_text);
+    document.getElementById("send_btn").addEventListener("click", send_chat_msg);
+    document.getElementById("join").addEventListener("click", send_join);
+    document.getElementById("chat_msg").addEventListener("keyup", handle_enter);
 
     // websocket for communications
     var websocket_url = "ws://" + window.location.hostname + ":8080";
@@ -31,12 +38,17 @@ $(function() {
     // clicking 'open' creates a new socket at the url entered
     var ws = new WebSocket(websocket_url);
 
+    // messages for the player
     var conn_status =  "not connected";
     var message = "";
+
+    // game update rate
     var msPerFrame = 20;
+
+    // boundaries
     var xMin = 0, xMax = context.canvas.width, yMin = 0, yMax = context.canvas.height;
 
-    // setup world
+    // setup circle world
     var circle_world = new CircleWorld();
     circle_world.xMin = xMin;
     circle_world.yMin = yMin;
@@ -70,7 +82,10 @@ $(function() {
         WAITING_FOR_REMOTE_ZERO: "waiting for circles to reach zero velocity after remote move",
         WAITING_FOR_LOCAL_ZERO: "waiting for circles to reach zero velocity after local move"
     }
+    // game state storage
     var game_state;
+    // game state is used to determine turns (who can interact with circles) and next game state
+    // player1 turn >> waiting for player1 zero velocity >> player2 turn >> waiting for player2 zero velocity >> player1 turn >> ... >> end game
     changeGameState(StateEnum.START);
 
     // initialize the client
@@ -128,44 +143,78 @@ $(function() {
         var message_object = JSON.parse(event.data);
 
         // process remote move
-        if(message_object['message'] == 'move'){
+        if(message_object['message'] == 'move') {
             stored_move = message_object;
-            if(game_state == StateEnum.WAITING_FOR_REMOTE_MOVE){
+            if(game_state == StateEnum.WAITING_FOR_REMOTE_MOVE) {
                 processRemoteMove();
             }
         }
 
-        if(message_object['message'] == 'opponent exit'){
+        if(message_object['message'] == 'opponent exit') {
             message = 'Opponent left';
             ws.close();
         }
 
         // assign players
-        if(message_object['message'] == 'player1'){
+        if(message_object['message'] == 'player1') {
             local_player = 'player1';
             myColor = PlayerColors.P1;
             oppColor = PlayerColors.P2;
             changeGameState(StateEnum.WAITING_FOR_LOCAL_MOVE);
         }
-        if(message_object['message'] == 'player2'){
+        if(message_object['message'] == 'player2') {
             local_player = 'player2';
             myColor = PlayerColors.P2
             oppColor = PlayerColors.P1;
             changeGameState(StateEnum.WAITING_FOR_REMOTE_MOVE);
         }
+
+        if(message_object['message'] == 'chat') {
+            document.getElementById('chat_area').value += '\n' + "opp: " + message_object['text'];
+            $('#chat_area').scrollTop($('#chat_area')[0].scrollHeight - $('#chat_area').height());
+        }
     };
 
     // send game join information
-    $("#join").on('click', function (event) {
-        var test_object = new Object();
-        test_object['message'] = 'join';
-        test_object['game'] = $("#text").val();
-        var send_object = JSON.stringify(test_object);
+    function send_join(event) {
+        var joinMessage = new Object();
+        joinMessage['message'] = 'join';
+        joinMessage['game'] = $("#text").val();
+        var send_object = JSON.stringify(joinMessage);
         ws.send(send_object);
-        $("#join").prop('disabled', true);
-        if(conn_status == "connected")
+        if(conn_status == "connected") {
             message = 'Waiting for opponent';
-    });
+        }
+        $("#join").prop('disabled', true);
+    }
+
+    // enter key sends message; alt+enter inserts a newline
+    function handle_enter(event){
+        if(!event.altKey && (event.keyCode || event.which) == 13) {
+            send_chat_msg();
+        }
+        if(event.altKey && (event.keyCode || event.which) == 13) {
+            document.getElementById("chat_msg").value += "\n";
+        }
+    }
+
+    // highlight selected text
+    function select_text(event){
+        event.target.select();
+    }
+
+    // send whatever is in the chat_msg element
+    function send_chat_msg(){
+        var chatMessage = new Object();
+        chatMessage['message'] = 'chat';
+        chatMessage['text'] = document.getElementById("chat_msg").value.trim('^\s\r');
+        var send_object = JSON.stringify(chatMessage);
+        ws.send(send_object);
+
+        document.getElementById('chat_area').value += '\n' + "you: " + chatMessage['text'];
+        $('#chat_area').scrollTop($('#chat_area')[0].scrollHeight - $('#chat_area').height());
+        document.getElementById("chat_msg").value = "";
+    }
 
     // set circle velocity and game state
     function processRemoteMove(){
@@ -174,7 +223,6 @@ $(function() {
         stored_move = "";
         changeGameState(StateEnum.WAITING_FOR_REMOTE_ZERO);
     }
-
 
     // send the moved circle to the server
     function sendMove(){
@@ -227,7 +275,7 @@ $(function() {
         }
     }
 
-    // set game state and set message appropriately
+    // set game state and message
     function changeGameState(gs){
         game_state = gs;
 
@@ -310,7 +358,7 @@ $(function() {
         context.clearRect(xMin, yMin, xMax, yMax);
     }
 
-    // draw messages from the server
+    // draw the 'message' variable text
     function drawMessage(){
         if(message)
         {

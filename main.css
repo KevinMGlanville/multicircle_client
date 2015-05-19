@@ -10,6 +10,7 @@ canvas {
     margin-right: auto;
     display: block;
     width: 800px;
+    height: 500px;
     cursor: cell;
     border-radius: 15px;
     border: solid #31f558 2px;
@@ -25,15 +26,45 @@ input {
     font-size: 20px;
 }
 
+#chat_area {
+    width: 800px;
+    font-family: Courier New;
+    color: rgb(49, 245, 88);
+    font-size: 15px;
+    background: #000000;
+    border: solid #31f558 2px;
+    border-radius: 5px;
+    text-decoration: none;
+    height: 48pt;
+}
+
+#chat_msg {
+    font-family: Courier New;
+    color: rgb(49, 245, 88);
+    font-size: 15px;
+    background: #000000;
+    border: solid #31f558 2px;
+    border-radius: 5px;
+    text-decoration: none;
+    height: 40px;
+    width: 725px;
+}
+
 .btn {
     font-family: Courier New;
-    color: rgb(49, 245, 88)
+    color: rgb(49, 245, 88);
     font-size: 20px;
     background: #000000;
     padding: 0px 5px 0px 5px;
     border: solid #31f558 2px;
     border-radius: 5px;
     text-decoration: none;
+}
+
+#send_btn {
+    height:40px;
+    width:60px;
+    vertical-align:top;
 }
 
 .btn:hover {
@@ -49,7 +80,6 @@ input {
 .center {
     margin-left: auto;
     margin-right: auto;
-    width: 50%;
     color: rgb(49, 245, 88);
     font-family: Courier New;
     text-align: center;

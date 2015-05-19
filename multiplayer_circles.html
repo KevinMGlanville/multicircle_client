@@ -9,30 +9,26 @@
     <script src="js/jquery-1.11.2.js"></script>
     <link rel="stylesheet" type="text/css" href="main.css">
     <script src="js/showhide.js"></script>
-
 </head>
 
 <body>
     <input id="join" type="button" class="btn" value="Join game: " />
     <input id="text" value="random"/><br/>
-    <div class="center">
-        <input id="howToPlay" type="button" class="btn" value="How to Play" onclick="showhide()" />
-        <div id="howto" style="display:none">
-            <br>
-                Type in the name of the game you would like to join<br>
-                Click Join game<br>
-                When you see the "Your move" text, it is your turn<br>
-                Drag a ball of your color (shown in the text) in the direction you would like to throw it<br>
-                The longer line you draw, the harder the ball will be thrown<br>
-                Any balls you touch on your turn will change to your color<br>
-                Change all of the balls to win!
-        </div>
-    </div>
-
     <div id="message"></div>
     <canvas id="game_canvas">
         This text is displayed if your browser does not support HTML5 Canvas.
     </canvas>
+
+    <div class="center">
+        <p>
+            <input id="howToPlay" type="button" class="btn" value="How-to / Chat" onclick="showhide()" /><br>
+        <span id="howto" >
+                <textarea id="chat_area" readonly>Chat here. Enter a game name to create/join. Draw a line to shoot your circles. Circles change colors when they collide. Change all circles to win!</textarea>
+                <textarea id="chat_msg">Enter messages...</textarea>
+                <input type="button" class="btn" id="send_btn" value="Send">
+        </span>
+        </p>
+    </div>
 
     <audio id="audio1" src="resources/1.wav" ></audio>
     <audio id="audio2" src="resources/2.wav" ></audio>
